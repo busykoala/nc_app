@@ -71,7 +71,7 @@ def host(host: Optional[str] = "", port: Optional[int] = 443):
     response = """
 host: {}\n
 port: {}\n
-{}\n,
+{}\n
 connectivity: {}
     """.format(host, port, dns, connectivity)
     return response
