@@ -5,6 +5,25 @@ import re
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
+import logging
+import typing as t
+
+
+class EndpointFilter(logging.Filter):
+    def __init__(
+        self,
+        path: str,
+        *args: t.Any,
+        **kwargs: t.Any,
+    ):
+        super().__init__(*args, **kwargs)
+        self._path = path
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.getMessage().find(self._path) == -1
+
+uvicorn_logger = logging.getLogger("uvicorn.access")
+uvicorn_logger.addFilter(EndpointFilter(path="/health"))
 
 app = FastAPI()
 
@@ -89,3 +108,8 @@ port: {}\n
 connectivity: {}
     """.format(ip, port, resolve_ip_host(ip, port))
     return response
+
+
+@app.get("/health", response_class=PlainTextResponse)
+def health():
+    return "OK"
