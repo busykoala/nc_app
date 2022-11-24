@@ -17,10 +17,12 @@ USER conncheck
 
 COPY . ${WORKDIR}
 
-RUN pip install --upgrade pip && \
-    pip install poetry && \
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir poetry && \
     python3 -m poetry config virtualenvs.in-project true && \
-    python3 -m poetry install --no-dev
+    python3 -m poetry install --no-dev && \
+    rm -rf ~/.cache/pypoetry/artifacts && rm -rf ~/.cache/pypoetry/cache
+# ^ https://github.com/python-poetry/poetry/issues/6445
 
 ENV PYTHONPATH=/app
 EXPOSE 8000
