@@ -1,29 +1,37 @@
-FROM alpine:latest as prod
+FROM alpine:3.20 AS prod
 
-RUN apk update && \
-    apk add --no-cache \
-        python3 \
-        py3-pip \
-        openssl
+RUN apk add --no-cache \
+  python3 \
+  py3-pip \
+  curl \
+  openssl \
+  ca-certificates
 
 WORKDIR /app
 
-# setup app & user space
-RUN addgroup -S conncheck -g 1000
-RUN adduser -H -S conncheck -G conncheck -h /app -s /bin/bash -u 1000
-RUN chown conncheck:conncheck /app -R
+# user with HOME at /app (as you had)
+RUN addgroup -S conncheck -g 1000 && \
+    adduser -H -S conncheck -G conncheck -h /app -s /bin/sh -u 1000 && \
+    chown conncheck:conncheck /app -R
 
 USER conncheck
 
-COPY . ${WORKDIR}
+# make sure installer targets /app and poetry is on PATH
+ENV HOME=/app
+ENV PATH="/app/.local/bin:${PATH}"
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir poetry && \
-    python3 -m poetry config virtualenvs.in-project true && \
-    python3 -m poetry install --no-dev && \
-    rm -rf ~/.cache/pypoetry/artifacts && rm -rf ~/.cache/pypoetry/cache
-# ^ https://github.com/python-poetry/poetry/issues/6445
+# install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 - --version 1.8.3
 
+# copy sources
+COPY . .
+
+# in-project venv and install deps
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 ENV PYTHONPATH=/app
+RUN poetry --version && \
+    poetry install --no-dev --no-interaction --no-ansi && \
+    rm -rf ~/.cache/pypoetry/*
+
 EXPOSE 8000
-CMD ["python3", "-m", "poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
